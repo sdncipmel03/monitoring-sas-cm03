@@ -1047,7 +1047,7 @@
         // =========================================================================
         // 1. TEMPELKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI BAWAH INI (/exec)
         // =========================================================================
-        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyfZYXJIolkJwicxuvuaQWvBqvub7OkHlD1Z-8LIHEMqrHND76oHODMQNGM7t3qWHetTw/exec";
+        const APPS_SCRIPT_URL = "TEMPEL_URL_WEB_APP_APPS_SCRIPT_DISINI";
 
         // Default Local State
         const DEFAULT_STATE = {
@@ -1197,23 +1197,30 @@
 
         // Kirim Data & File ke Google Sheets + Google Drive (Apps Script)
         async function syncToCloud(payloadObj) {
-            if (!isAppsScriptConfigured()) return;
+            if (!isAppsScriptConfigured()) {
+                return { status: "error", message: "APPS_SCRIPT_URL belum diisi di index.html" };
+            }
             updateSyncStatusUI('syncing', 'Mengunggah ke Drive & Sheets...');
 
             try {
-                await fetch(APPS_SCRIPT_URL, {
+                const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
+                    redirect: 'follow',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payloadObj)
                 });
 
-                setTimeout(() => {
+                const result = await response.json();
+                if (result && result.status === 'success') {
                     updateSyncStatusUI('connected', 'Tersinkron (Sheets)');
-                }, 1500);
+                } else {
+                    updateSyncStatusUI('local', 'Error Server');
+                }
+                return result;
             } catch (err) {
                 console.error("Gagal menyimpan ke Apps Script:", err);
                 updateSyncStatusUI('local', 'Gagal Sync');
+                return { status: "error", message: "Koneksi gagal atau akses Web App belum diatur ke 'Siapa saja' (Anyone)." };
             }
         }
 
@@ -1341,9 +1348,6 @@
                 const base64Data = event.target.result.split(',')[1];
                 const folderUrl = (appData.settings.driveFolders && appData.settings.driveFolders[subject.grade]) || '';
 
-                subject[fileType] = 'uploaded';
-                if (notes) subject.notes = notes;
-
                 const fileTypeLabel = {
                     soal: 'Soal SAS',
                     kisikisi: 'Kisi-Kisi Soal',
@@ -1363,13 +1367,7 @@
                     fileUrl: folderUrl
                 };
 
-                if (!appData.submissionLogs) appData.submissionLogs = [];
-                appData.submissionLogs.unshift(logEntry);
-
-                localStorage.setItem('sas_sd_v3_monitoring', JSON.stringify(appData));
-                renderApp();
-
-                await syncToCloud({
+                const result = await syncToCloud({
                     action: "teacher_upload",
                     subjectId: subject.id,
                     fileType: fileType,
@@ -1378,16 +1376,32 @@
                     fileName: formattedFileName,
                     mimeType: file.type || 'application/octet-stream',
                     fileData: base64Data,
-                    logEntry: logEntry
+                    logEntry: logEntry,
+                    fallbackState: appData
                 });
 
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalBtnHtml;
-                fileInput.value = '';
-                document.getElementById('uploadNotes').value = '';
 
-                closeModal('uploadModal');
-                showToast(`Berkas berhasil disimpan ke Google Drive ${subject.grade}!`, 'success');
+                if (result && result.status === 'success') {
+                    subject[fileType] = 'uploaded';
+                    if (notes) subject.notes = notes;
+                    if (result.fileUrl) logEntry.fileUrl = result.fileUrl;
+
+                    if (!appData.submissionLogs) appData.submissionLogs = [];
+                    appData.submissionLogs.unshift(logEntry);
+
+                    localStorage.setItem('sas_sd_v3_monitoring', JSON.stringify(appData));
+                    renderApp();
+
+                    fileInput.value = '';
+                    document.getElementById('uploadNotes').value = '';
+                    closeModal('uploadModal');
+                    showToast(`Berkas berhasil disimpan ke Google Drive ${subject.grade}!`, 'success');
+                } else {
+                    const errMsg = (result && result.message) ? result.message : 'Gagal menyimpan file ke Google Drive.';
+                    showToast(`GAGAL UPLOAD: ${errMsg}`, 'error');
+                }
             };
 
             reader.onerror = function () {
@@ -2131,9 +2145,4 @@
     </script>
 </body>
 
-</html>"""
-
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_content)
-
-print("index.html dengan fitur upload langsung ke Google Drive berhasil dibuat!")
+</html>
