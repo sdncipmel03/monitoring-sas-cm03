@@ -13,18 +13,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
 
-    <!-- Firebase SDK (ES Modules for Real-time Cloud Data Sync Across Devices) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        window.FirebaseModule = {
-            initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
-            getFirestore, doc, getDoc, setDoc, onSnapshot, collection
-        };
-    </script>
-
     <script>
         tailwind.config = {
             theme: {
@@ -122,6 +110,13 @@
 
                 <!-- Admin Action & Status -->
                 <div class="flex items-center gap-3">
+                    <!-- Sync Status Pill -->
+                    <div id="headerSyncPill"
+                        class="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200 text-[11px] font-semibold">
+                        <i class="fa-solid fa-rotate fa-spin text-indigo-500"></i>
+                        <span>Menghubungkan...</span>
+                    </div>
+
                     <!-- Deadline Badge -->
                     <div
                         class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-800 rounded-lg border border-amber-200 text-xs font-medium">
@@ -161,7 +156,7 @@
                             Admin Panitia SAS</span>
                     </div>
                     <p class="text-xs text-slate-300">Kelola status pengumpulan, atur folder Drive per kelas, cetak
-                        laporan, dan lihat riwayat berkas.</p>
+                        laporan, dan sinkronkan ke Google Sheets.</p>
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
@@ -211,8 +206,8 @@
                     <h2 class="text-xl sm:text-2xl font-extrabold mt-2 tracking-tight">Portal Monitoring Pengumpulan
                         Soal SAS</h2>
                     <p class="text-indigo-200 text-xs sm:text-sm mt-1 max-w-xl">
-                        Monitoring pengumpulan **Soal, Kisi-kisi, Layout, dan Kunci Jawaban** SAS secara terpusat &
-                        real-time.
+                        Monitoring pengumpulan <strong>Soal, Kisi-kisi, Layout, dan Kunci Jawaban</strong> SAS secara
+                        terpusat & real-time.
                     </p>
                 </div>
 
@@ -267,8 +262,8 @@
                         <span>DOWNLOAD KOP SOAL (WORD)</span>
                     </a>
                     <div class="text-[10px] text-center text-slate-400 flex items-center justify-center gap-1">
-                        <i class="fa-solid fa-shield-halved text-emerald-500"></i> Otomatis Masuk Ke Google Drive Per
-                        Kelas
+                        <i class="fa-solid fa-shield-halved text-emerald-500"></i> Otomatis Masuk Ke Google Drive &
+                        Spreadsheet
                     </div>
                 </div>
             </div>
@@ -359,9 +354,15 @@
                             1 - 6)</p>
                     </div>
                 </div>
-                <div class="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200"
-                    id="globalTotalBadge">
-                    Total: 0 Mapel
+                <div class="flex items-center gap-2">
+                    <button onclick="manualRefreshCloud()"
+                        class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full border border-indigo-200 text-xs font-semibold flex items-center gap-1 transition">
+                        <i class="fa-solid fa-arrows-rotate"></i> Segarkan Data
+                    </button>
+                    <div class="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200"
+                        id="globalTotalBadge">
+                        Total: 0 Mapel
+                    </div>
                 </div>
             </div>
 
@@ -421,7 +422,7 @@
                 </select>
             </div>
             <div class="text-xs text-slate-400 italic">
-                <i class="fa-solid fa-circle-check text-emerald-500"></i> Status Otomatis Terhubung ke Google Drive
+                <i class="fa-solid fa-circle-check text-emerald-500"></i> Tersinkron Otomatis ke Google Sheets
             </div>
         </div>
 
@@ -567,7 +568,7 @@
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr
-                            class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-200 sticky top-0 bg-slate-100">
+                            class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-200 sticky top-0">
                             <th class="p-3 text-center">No</th>
                             <th class="p-3">Waktu Input</th>
                             <th class="p-3">Mata Pelajaran</th>
@@ -659,8 +660,8 @@
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-cloud-arrow-up text-indigo-600"></i> Form Pengumpulan Berkas SAS
                 </h3>
-                <p class="text-xs text-slate-500">Pilih mata pelajaran, unggah berkas langsung yang otomatis akan masuk
-                    ke Google Drive per kelas.</p>
+                <p class="text-xs text-slate-500">Pilih mata pelajaran, unggah berkas ke Google Drive per kelas, lalu
+                    konfirmasi pengumpulan.</p>
             </div>
 
             <form onsubmit="handleTeacherSubmit(event)" class="space-y-4">
@@ -707,8 +708,8 @@
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Berkas dari Komputer/HP</label>
                     <input type="file" id="uploadFileInput" required
                         class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
-                    <span class="text-[10px] text-slate-400 mt-1 block">Berkas langsung tersimpan dan status diperbarui
-                        otomatis.</span>
+                    <span class="text-[10px] text-slate-400 mt-1 block">Status pada tabel monitoring akan otomatis
+                        diperbarui & tersimpan ke Google Sheets.</span>
                 </div>
 
                 <div>
@@ -907,7 +908,7 @@
             </button>
             <div class="mb-4 flex-shrink-0">
                 <h3 class="text-base font-bold text-slate-800">Pengaturan Sekolah & Google Drive Kelas</h3>
-                <p class="text-xs text-slate-500">Atur nama sekolah, batas waktu, link Kop Soal PDF, dan tautan folder
+                <p class="text-xs text-slate-500">Atur nama sekolah, batas waktu, link Kop Soal Word, dan tautan folder
                     Google Drive per kelas.</p>
             </div>
 
@@ -949,16 +950,15 @@
                 <input type="file" id="importJsonFileInput" accept=".json" onchange="handleImportDataJson(event)"
                     class="hidden">
 
-                <!-- SINKRONISASI & BACKUP DATA SECTION -->
+                <!-- SINKRONISASI GOOGLE APPS SCRIPT & BACKUP DATA SECTION -->
                 <div class="p-3.5 bg-slate-100/90 rounded-2xl border border-slate-200">
                     <h4 class="font-bold text-xs text-slate-800 flex items-center justify-between">
-                        <span><i class="fa-solid fa-cloud text-indigo-600"></i> Sinkronisasi Cloud Real-Time</span>
+                        <span><i class="fa-solid fa-table text-emerald-600"></i> Koneksi Google Sheets (Apps Script)</span>
                     </h4>
 
                     <div id="cloudStatusBadge"
-                        class="text-[11px] text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 mt-2 block font-medium">
-                        <i class="fa-solid fa-cloud-check text-emerald-500"></i> Terhubung & Tersinkron Otomatis di HP &
-                        Komputer Seluruh Guru
+                        class="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 mt-2 block font-medium">
+                        <i class="fa-solid fa-circle-info text-amber-500"></i> Memeriksa koneksi Google Apps Script...
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 mt-3">
@@ -1040,8 +1040,13 @@
         </div>
     </div>
 
-    <!-- JAVASCRIPT LOGIC WITH FIRESTORE REALTIME SYNC -->
+    <!-- JAVASCRIPT LOGIC WITH GOOGLE APPS SCRIPT SYNC -->
     <script>
+        // =========================================================================
+        // 1. TEMPELKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI BAWAH INI (/exec)
+        // =========================================================================
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyfZYXJIolkJwicxuvuaQWvBqvub7OkHlD1Z-8LIHEMqrHND76oHODMQNGM7t3qWHetTw/exec";
+
         // Default Local State
         const DEFAULT_STATE = {
             isAdmin: false,
@@ -1050,7 +1055,6 @@
                 academicYear: "2026/2027 Ganjil",
                 deadline: "2026-12-10T23:59",
                 kopSoalUrl: "https://drive.google.com/file/d/1_KopSoalSAS_SDNCipinangMelayu03P/view",
-                firebaseConfigStr: "",
                 driveFolders: {
                     "Kelas 1": "https://drive.google.com/drive/folders/1_Kelas1_SDNCipinangMelayu03P",
                     "Kelas 2": "https://drive.google.com/drive/folders/2_Kelas2_SDNCipinangMelayu03P",
@@ -1089,13 +1093,9 @@
             ]
         };
 
-        // Firebase Cloud Variables
-        let db = null;
-        let auth = null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sas-sd-monitoring-app';
-
-        // Load Local State & Initialize Cloud Sync
+        // Load Local State
         let appData = loadState();
+        let isSyncing = false;
 
         function loadState() {
             const saved = localStorage.getItem('sas_sd_v3_monitoring');
@@ -1109,10 +1109,111 @@
             return JSON.parse(JSON.stringify(DEFAULT_STATE));
         }
 
-        function saveState() {
+        function saveState(skipCloud = false) {
             localStorage.setItem('sas_sd_v3_monitoring', JSON.stringify(appData));
-            syncToCloud();
+            if (!skipCloud) {
+                syncToCloud({ action: "admin_sync", data: appData });
+            }
             renderApp();
+        }
+
+        function updateSyncStatusUI(status, text) {
+            const pill = document.getElementById('headerSyncPill');
+            const badge = document.getElementById('cloudStatusBadge');
+
+            if (status === 'connected') {
+                if (pill) {
+                    pill.className = "hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200 text-[11px] font-semibold";
+                    pill.innerHTML = `<i class="fa-solid fa-cloud-check text-emerald-600"></i> <span>${text}</span>`;
+                }
+                if (badge) {
+                    badge.className = "text-[11px] text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 mt-2 block font-semibold";
+                    badge.innerHTML = `<i class="fa-solid fa-cloud-check text-emerald-500"></i> Terhubung ke Google Sheets — Tersinkron Otomatis di HP & Komputer Seluruh Guru`;
+                }
+            } else if (status === 'syncing') {
+                if (pill) {
+                    pill.className = "hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-200 text-[11px] font-semibold";
+                    pill.innerHTML = `<i class="fa-solid fa-rotate fa-spin text-indigo-600"></i> <span>${text}</span>`;
+                }
+            } else {
+                if (pill) {
+                    pill.className = "hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 text-amber-800 rounded-lg border border-amber-200 text-[11px] font-semibold";
+                    pill.innerHTML = `<i class="fa-solid fa-hard-drive text-amber-600"></i> <span>${text}</span>`;
+                }
+                if (badge) {
+                    badge.className = "text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 mt-2 block font-medium";
+                    badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500"></i> URL Apps Script belum dipasang di kode index.html (Mode Lokal Aktif).`;
+                }
+            }
+        }
+
+        function isAppsScriptConfigured() {
+            return APPS_SCRIPT_URL &&
+                APPS_SCRIPT_URL.startsWith("https://script.google.com/") &&
+                !APPS_SCRIPT_URL.includes("TEMPEL_URL");
+        }
+
+        // Ambil Data Terbaru dari Google Sheets (Apps Script)
+        async function fetchFromCloud(showNotification = false) {
+            if (!isAppsScriptConfigured()) {
+                updateSyncStatusUI('local', 'Mode Lokal');
+                return;
+            }
+            if (isSyncing) return;
+            isSyncing = true;
+            updateSyncStatusUI('syncing', 'Menyinkronkan...');
+
+            try {
+                const response = await fetch(APPS_SCRIPT_URL + "?t=" + new Date().getTime());
+                const cloudData = await response.json();
+
+                if (cloudData && cloudData.empty) {
+                    // Database Google Sheets masih kosong -> dorong data awal ke Sheets
+                    await syncToCloud({ action: "admin_sync", data: appData });
+                    updateSyncStatusUI('connected', 'Tersinkron (Sheets)');
+                } else if (cloudData && cloudData.subjects) {
+                    const currentAdminStatus = appData.isAdmin;
+                    appData = cloudData;
+                    appData.isAdmin = currentAdminStatus; // Pertahankan sesi login admin lokal
+
+                    localStorage.setItem('sas_sd_v3_monitoring', JSON.stringify(appData));
+                    renderApp();
+                    updateSyncStatusUI('connected', 'Tersinkron (Sheets)');
+                    if (showNotification) showToast('Data terbaru berhasil dimuat dari Google Sheets!', 'success');
+                }
+            } catch (err) {
+                console.error("Gagal membaca dari Apps Script:", err);
+                updateSyncStatusUI('local', 'Offline / Lokal');
+                if (showNotification) showToast('Gagal terhubung ke Google Sheets. Periksa koneksi internet.', 'error');
+            } finally {
+                isSyncing = false;
+            }
+        }
+
+        window.manualRefreshCloud = function () {
+            fetchFromCloud(true);
+        };
+
+        // Kirim Data ke Google Sheets (Apps Script)
+        async function syncToCloud(payloadObj) {
+            if (!isAppsScriptConfigured()) return;
+            updateSyncStatusUI('syncing', 'Menyimpan ke Sheets...');
+
+            try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payloadObj)
+                });
+
+                setTimeout(() => {
+                    updateSyncStatusUI('connected', 'Tersinkron (Sheets)');
+                }, 1200);
+            } catch (err) {
+                console.error("Gagal menyimpan ke Apps Script:", err);
+                updateSyncStatusUI('local', 'Gagal Sync');
+            }
         }
 
         // Global Modal Helpers
@@ -1155,7 +1256,7 @@
             const pass = document.getElementById('loginPassword').value;
             if (pass) {
                 appData.isAdmin = true;
-                saveState();
+                saveState(true); // Tidak perlu overwrite cloud hanya untuk login lokal
                 closeModal('loginModal');
                 showToast('Login Admin Berhasil!', 'success');
             } else {
@@ -1165,7 +1266,7 @@
 
         window.logoutAdmin = function () {
             appData.isAdmin = false;
-            saveState();
+            saveState(true);
             showToast('Anda telah keluar dari mode admin', 'info');
         };
 
@@ -1223,19 +1324,32 @@
                 kunci: 'Kunci Jawaban'
             }[fileType] || fileType;
 
-            if (!appData.submissionLogs) appData.submissionLogs = [];
-            appData.submissionLogs.unshift({
+            const logEntry = {
                 timestamp: new Date().toLocaleString('id-ID'),
                 subjectName: subject.name,
                 grade: subject.grade,
                 fileType: fileTypeLabel,
                 fileName: fileName,
                 notes: notes || '-'
+            };
+
+            if (!appData.submissionLogs) appData.submissionLogs = [];
+            appData.submissionLogs.unshift(logEntry);
+
+            // Simpan lokal & kirim khusus aksi teacher_upload agar aman dari bentrok antar-guru
+            localStorage.setItem('sas_sd_v3_monitoring', JSON.stringify(appData));
+            renderApp();
+
+            syncToCloud({
+                action: "teacher_upload",
+                subjectId: subject.id,
+                fileType: fileType,
+                notes: notes,
+                logEntry: logEntry
             });
 
-            saveState();
             closeModal('uploadModal');
-            showToast(`Berkas ${fileTypeLabel} untuk ${subject.name} (${subject.grade}) berhasil diunggah!`, 'success');
+            showToast(`Berkas ${fileTypeLabel} untuk ${subject.name} (${subject.grade}) berhasil dikirim!`, 'success');
         };
 
         window.handleDownloadKop = function (e) {
@@ -1247,79 +1361,6 @@
                 showToast('Link Kop Soal belum diatur oleh Admin di menu Seting!', 'error');
             }
         };
-
-        // Realtime Firestore Cloud Setup
-        async function initCloudSync() {
-            let firebaseConfig = null;
-            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) { }
-            }
-            if (!firebaseConfig && appData.settings && appData.settings.firebaseConfigStr) {
-                try { firebaseConfig = JSON.parse(appData.settings.firebaseConfigStr); } catch (e) { }
-            }
-
-            // Automatic cloud sync fallback
-            if (!firebaseConfig) {
-                firebaseConfig = {
-                    apiKey: "AIzaSyAw9o9mEKDJyP7Vchiq0g5m3CQRQX6TcRM",
-                    authDomain: "monitoring-sas-cipmel03.firebaseapp.com",
-                    projectId: "monitoring-sas-cipmel03",
-                    storageBucket: "monitoring-sas-cipmel03.firebasestorage.app",
-                    messagingSenderId: "98696269163",
-                    appId: "1:98696269163:web:70973f215c8fb13642102e",
-                    measurementId: "G-TP4K1B0S32"
-                };
-            }
-
-            const cloudStatusBadge = document.getElementById('cloudStatusBadge');
-
-            if (!window.FirebaseModule) {
-                if (cloudStatusBadge) {
-                    cloudStatusBadge.innerHTML = `<i class="fa-solid fa-hard-drive text-amber-500"></i> Mode Penyimpanan Lokal Active.`;
-                    cloudStatusBadge.className = "text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 mt-2 block font-medium";
-                }
-                return;
-            }
-
-            try {
-                const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, getFirestore, doc, setDoc, onSnapshot } = window.FirebaseModule;
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                if (cloudStatusBadge) {
-                    cloudStatusBadge.innerHTML = `<i class="fa-solid fa-cloud-check text-emerald-500"></i> Cloud Real-Time Active — Tersinkron Otomatis di HP & Komputer Seluruh Guru`;
-                    cloudStatusBadge.className = "text-[11px] text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 mt-2 block font-semibold";
-                }
-
-                const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'main');
-                onSnapshot(configDocRef, (snapshot) => {
-                    if (snapshot.exists()) {
-                        const cloudData = snapshot.data();
-                        if (cloudData.settings) appData.settings = { ...appData.settings, ...cloudData.settings };
-                        if (cloudData.specTable) appData.specTable = cloudData.specTable;
-                        if (cloudData.mathNotes) appData.mathNotes = cloudData.mathNotes;
-                        if (cloudData.subjects) appData.subjects = cloudData.subjects;
-                        if (cloudData.submissionLogs) appData.submissionLogs = cloudData.submissionLogs;
-
-                        localStorage.setItem('sas_sd_v3_monitoring', JSON.stringify(appData));
-                        renderApp();
-                    } else {
-                        syncToCloud();
-                    }
-                }, (error) => {
-                    console.log("Firestore snapshot sync fallback:", error);
-                });
-            } catch (err) {
-                console.log("Cloud sync initialization fallback:", err);
-            }
-        }
 
         window.exportDataJson = function () {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
@@ -1352,7 +1393,7 @@
                         if (importedData.submissionLogs) appData.submissionLogs = importedData.submissionLogs;
 
                         saveState();
-                        showToast('Data berhasil diimpor & diperbarui di perangkat ini!', 'success');
+                        showToast('Data berhasil diimpor & disinkronkan ke Google Sheets!', 'success');
                     } else {
                         showToast('Format file JSON tidak sesuai!', 'error');
                     }
@@ -1362,23 +1403,6 @@
             };
             reader.readAsText(file);
         };
-
-        async function syncToCloud() {
-            if (!db || !auth?.currentUser) return;
-            try {
-                const { doc, setDoc } = window.FirebaseModule;
-                const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'main');
-                await setDoc(configDocRef, {
-                    settings: appData.settings,
-                    specTable: appData.specTable,
-                    mathNotes: appData.mathNotes,
-                    subjects: appData.subjects,
-                    submissionLogs: appData.submissionLogs || []
-                });
-            } catch (err) {
-                console.error("Error saving to cloud:", err);
-            }
-        }
 
         window.resetDefaultData = function () {
             showConfirmModal(
@@ -1401,10 +1425,6 @@
             appData.settings.deadline = document.getElementById('settingDeadline').value;
             appData.settings.kopSoalUrl = document.getElementById('settingKopSoalUrl').value;
 
-            if (document.getElementById('settingFirebaseConfig')) {
-                appData.settings.firebaseConfigStr = document.getElementById('settingFirebaseConfig').value.trim();
-            }
-
             if (!appData.settings.driveFolders) appData.settings.driveFolders = {};
             appData.settings.driveFolders["Kelas 1"] = document.getElementById('driveUrlKelas1').value;
             appData.settings.driveFolders["Kelas 2"] = document.getElementById('driveUrlKelas2').value;
@@ -1415,7 +1435,7 @@
 
             saveState();
             closeModal('settingsModal');
-            showToast('Pengaturan sekolah & link simpan berhasil!', 'success');
+            showToast('Pengaturan sekolah & link Drive berhasil disimpan ke Sheets!', 'success');
         };
 
         window.openEditSpecModal = function () {
@@ -1517,6 +1537,9 @@
 
             saveState();
             closeModal('addMapelModal');
+            if (!document.getElementById('adminMapelListModal').classList.contains('hidden')) {
+                renderAdminMapelList();
+            }
             showToast('Mata pelajaran berhasil disimpan!', 'success');
         };
 
@@ -1683,9 +1706,6 @@
             document.getElementById('settingAcademicYear').value = appData.settings.academicYear || '';
             document.getElementById('settingDeadline').value = appData.settings.deadline || '';
             document.getElementById('settingKopSoalUrl').value = appData.settings.kopSoalUrl || '';
-            if (document.getElementById('settingFirebaseConfig')) {
-                document.getElementById('settingFirebaseConfig').value = appData.settings.firebaseConfigStr || '';
-            }
 
             const df = appData.settings.driveFolders || {};
             document.getElementById('driveUrlKelas1').value = df["Kelas 1"] || '';
@@ -2047,7 +2067,15 @@
             renderApp();
             setInterval(updateCountdown, 1000);
             updateCountdown();
-            initCloudSync();
+            fetchFromCloud(false);
+
+            // Auto-sync setiap 20 detik jika tidak ada modal yang sedang dibuka
+            setInterval(() => {
+                const openModals = document.querySelectorAll('.fixed.inset-0.flex');
+                if (openModals.length === 0) {
+                    fetchFromCloud(false);
+                }
+            }, 20000);
         };
     </script>
 </body>
